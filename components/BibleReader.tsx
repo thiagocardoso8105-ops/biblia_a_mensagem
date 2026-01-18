@@ -29,18 +29,30 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
 
       try {
         const testamentPath = book.testament === 'Old' ? 'old-testament' : 'new-testament';
-        // Ajuste o caminho abaixo conforme a estrutura exata que você colocou no projeto
-        const response = await fetch(`./data/${testamentPath}/${bookId}/${chapter}.json`);
+        // Usamos o caminho relativo que funcionará tanto local quanto no Vercel
+        // Certifique-se que a pasta 'data' está em 'public/data' no Vercel
+        const url = `/data/${testamentPath}/${bookId}/${chapter}.json`;
+        const response = await fetch(url);
         
-        if (!response.ok) throw new Error("Capítulo não encontrado");
+        if (!response.ok) {
+          throw new Error(`Arquivo não encontrado em: ${url}`);
+        }
         
         const data = await response.json();
-        // Assume-se que o JSON tem um campo "verses" que é uma array de strings ou objetos
-        // Ajustando para o formato comum do repo: array de strings
-        setVerses(Array.isArray(data) ? data : data.verses || ["Erro ao formatar versículos."]);
+        const content = Array.isArray(data) ? data : (data.verses || []);
+        
+        if (content.length === 0) {
+          setVerses(["Este capítulo parece estar vazio no arquivo JSON."]);
+        } else {
+          setVerses(content);
+        }
       } catch (error) {
         console.error("Erro ao carregar capítulo:", error);
-        setVerses(["Não foi possível carregar o conteúdo deste capítulo. Verifique se os arquivos JSON estão na pasta data."]);
+        setVerses([
+          "Não foi possível carregar o conteúdo.",
+          "Certifique-se que a pasta 'data' está localizada dentro da pasta 'public' do seu projeto antes de enviar ao Vercel.",
+          `Tentamos buscar em: /data/${book.testament === 'Old' ? 'old-testament' : 'new-testament'}/${bookId}/${chapter}.json`
+        ]);
       } finally {
         setIsLoadingContent(false);
       }
@@ -51,7 +63,9 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
 
   const stopAudio = () => {
     if (audioSourceRef.current) {
-      audioSourceRef.current.stop();
+      try {
+        audioSourceRef.current.stop();
+      } catch (e) {}
       audioSourceRef.current = null;
     }
     setIsPlaying(false);
@@ -68,6 +82,8 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
       if (audioData) {
         audioSourceRef.current = await playRawAudio(audioData);
         audioSourceRef.current.onended = () => setIsPlaying(false);
+      } else {
+        setIsPlaying(false);
       }
     } catch (e) {
       console.error(e);
@@ -97,7 +113,6 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
   return (
     <div className={`p-4 md:p-8 rounded-3xl transition-colors duration-500 ${themeClasses[theme]} min-h-screen animate-fade-in`}>
       <div className="max-w-3xl mx-auto">
-        {/* Header de Navegação */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 border-b border-stone-200/50 dark:border-stone-700/50 pb-8">
           <div>
             <h2 className="text-5xl font-black tracking-tighter text-amber-900 dark:text-amber-500 mb-2">
@@ -105,7 +120,7 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
             </h2>
             <div className="flex gap-4">
               <button 
-                disabled={isLoadingContent}
+                disabled={isLoadingContent || verses.length <= 3}
                 onClick={handleListen}
                 className={`flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-all ${isPlaying ? 'text-red-600' : 'text-stone-400 hover:text-amber-800 disabled:opacity-20'}`}
               >
@@ -137,11 +152,10 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
           </div>
         </div>
 
-        {/* Conteúdo do Texto */}
         {isLoadingContent ? (
           <div className="flex flex-col items-center justify-center py-40 space-y-4 opacity-50">
             <div className="animate-spin h-10 w-10 border-4 border-amber-900 border-t-transparent rounded-full"></div>
-            <p className="font-black uppercase tracking-widest text-xs">Abrindo pergaminhos...</p>
+            <p className="font-black uppercase tracking-widest text-xs text-amber-900">Abrindo pergaminhos...</p>
           </div>
         ) : (
           <article className="serif-text text-2xl leading-[1.7] space-y-8 mb-20 text-justify animate-fade-in">
@@ -156,14 +170,13 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
           </article>
         )}
 
-        {/* Seção de IA */}
         {!isLoadingContent && (
           <div className="pt-12 border-t border-stone-200 dark:border-stone-800">
             {!explanation ? (
               <button 
                 onClick={handleStudyWithAi}
-                disabled={isLoadingAi}
-                className="group flex items-center gap-4 bg-amber-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-amber-800 transition-all transform hover:-translate-y-1 shadow-xl shadow-amber-900/20"
+                disabled={isLoadingAi || verses.length <= 3}
+                className="group flex items-center gap-4 bg-amber-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-amber-800 transition-all transform hover:-translate-y-1 shadow-xl shadow-amber-900/20 disabled:opacity-50"
               >
                 {isLoadingAi ? (
                   <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
