@@ -31,29 +31,27 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
 
       try {
         const testamentPath = book.testament === 'Old' ? 'old-testament' : 'new-testament';
-        // Tenta carregar os dados. Se 'data' estiver na raiz pública, o fetch funciona.
-        const url = `/data/${testamentPath}/${bookId}/${chapter}.json`;
+        // Ajustado para caminho relativo 'data/...'
+        const url = `data/${testamentPath}/${bookId}/${chapter}.json`;
+        
         const response = await fetch(url);
         
         if (!response.ok) {
-          throw new Error(`Arquivo não encontrado: ${url}. Verifique se a pasta 'data' está no diretório 'public'.`);
+          throw new Error(`Não foi possível encontrar o capítulo em: ${url}`);
         }
         
         const data = await response.json();
         const content = Array.isArray(data) ? data : (data.verses || []);
         
         if (content.length === 0) {
-          setVerses(["Este capítulo não possui conteúdo disponível."]);
+          setVerses(["Conteúdo indisponível para este capítulo."]);
         } else {
           setVerses(content);
         }
       } catch (err: any) {
-        console.error("Erro ao carregar capítulo:", err);
-        setError(err.message);
-        setVerses([
-          "Ocorreu um erro ao carregar o texto sagrado.",
-          `Erro: ${err.message}`
-        ]);
+        console.error("Erro de carregamento:", err);
+        setError(`Erro: ${err.message}. Certifique-se que a pasta 'data' está na raiz do seu servidor/projeto.`);
+        setVerses(["Não foi possível carregar o texto sagrado."]);
       } finally {
         setIsLoadingContent(false);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -98,9 +96,9 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
     setIsLoadingAi(true);
     try {
       const result = await getBibleExplanation(book.name, chapter, verses.join(' '));
-      setExplanation(result || "Não foi possível gerar um insight no momento.");
+      setExplanation(result || "Insight não disponível.");
     } catch (error) {
-      setExplanation("Erro na conexão com o assistente teológico.");
+      setExplanation("Erro ao conectar com a IA.");
     } finally {
       setIsLoadingAi(false);
     }
@@ -120,20 +118,20 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
 
         <div className="flex flex-wrap gap-3">
           <button 
-            disabled={isLoadingContent}
+            disabled={isLoadingContent || !!error}
             onClick={handleListen}
             className={`
               flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all
-              ${isPlaying ? 'bg-red-600 text-white animate-pulse' : 'bg-stone-500/10 text-stone-600 dark:text-stone-300 hover:bg-stone-500/20'}
+              ${isPlaying ? 'bg-red-600 text-white animate-pulse' : 'bg-stone-500/10 text-stone-600 dark:text-stone-300 hover:bg-stone-500/20 disabled:opacity-30'}
             `}
           >
             {isPlaying ? 'Parar Leitura' : 'Ouvir Capítulo'}
           </button>
           
           <button 
-            disabled={isLoadingContent || isLoadingAi}
+            disabled={isLoadingContent || isLoadingAi || !!error}
             onClick={handleStudyWithAi}
-            className="flex items-center gap-2 px-6 py-3 rounded-full bg-amber-900 text-white text-xs font-black uppercase tracking-widest hover:bg-amber-800 transition-all shadow-lg shadow-amber-900/20"
+            className="flex items-center gap-2 px-6 py-3 rounded-full bg-amber-900 text-white text-xs font-black uppercase tracking-widest hover:bg-amber-800 transition-all shadow-lg shadow-amber-900/20 disabled:opacity-30"
           >
             {isLoadingAi ? 'Consultando...' : 'Pedir Insight'}
           </button>
@@ -146,9 +144,10 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
           <p className="text-[10px] font-black uppercase tracking-widest">Carregando manuscrito...</p>
         </div>
       ) : error ? (
-        <div className="py-24 text-center">
+        <div className="py-24 p-8 border-2 border-dashed border-red-500/20 rounded-3xl text-center bg-red-50 dark:bg-red-900/10">
            <p className="text-red-500 font-bold mb-4">{error}</p>
-           <p className="text-sm opacity-60">Certifique-se que a pasta 'data' foi enviada e está acessível em /data/...</p>
+           <p className="text-sm opacity-60">Dica: Se você está rodando localmente ou no Vercel, a pasta 'data' deve ser servida como estática.</p>
+           <button onClick={() => window.location.reload()} className="mt-6 px-4 py-2 bg-red-500 text-white rounded-xl text-xs font-bold">Tentar Novamente</button>
         </div>
       ) : (
         <div className="serif-text text-xl md:text-2xl leading-[1.8] text-justify space-y-10 selection:bg-amber-200 selection:text-amber-900">
@@ -184,9 +183,8 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
         </div>
       )}
 
-      {/* Persistent Navigation Controls */}
       <div className="fixed bottom-10 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:right-12 z-40">
-        <div className={`flex items-center gap-1 p-1.5 rounded-full border shadow-2xl backdrop-blur-xl ${theme === 'dark' ? 'bg-stone-800 border-stone-700' : theme === 'sepia' ? 'bg-[#fcf8ef] border-[#e8dfc8]' : 'bg-white border-stone-200'}`}>
+        <div className={`flex items-center gap-1 p-1.5 rounded-full border shadow-2xl backdrop-blur-xl ${theme === 'dark' ? 'bg-stone-800 border-stone-700 text-white' : theme === 'sepia' ? 'bg-[#fcf8ef] border-[#e8dfc8] text-[#433422]' : 'bg-white border-stone-200 text-stone-900'}`}>
           <button 
             disabled={chapter <= 1 || isLoadingContent}
             onClick={() => onChapterChange(chapter - 1)}
