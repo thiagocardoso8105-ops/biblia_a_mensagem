@@ -16,6 +16,7 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
   const [explanation, setExplanation] = useState<string | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   
   const book = BIBLE_BOOKS.find(b => b.id === bookId);
@@ -24,16 +25,18 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
     const fetchChapterData = async () => {
       if (!book) return;
       setIsLoadingContent(true);
+      setError(null);
       setExplanation(null);
       stopAudio();
 
       try {
         const testamentPath = book.testament === 'Old' ? 'old-testament' : 'new-testament';
+        // Tenta carregar os dados. Se 'data' estiver na raiz pública, o fetch funciona.
         const url = `/data/${testamentPath}/${bookId}/${chapter}.json`;
         const response = await fetch(url);
         
         if (!response.ok) {
-          throw new Error(`Chapter file not found: ${url}`);
+          throw new Error(`Arquivo não encontrado: ${url}. Verifique se a pasta 'data' está no diretório 'public'.`);
         }
         
         const data = await response.json();
@@ -44,11 +47,12 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
         } else {
           setVerses(content);
         }
-      } catch (error) {
-        console.error("Error loading chapter:", error);
+      } catch (err: any) {
+        console.error("Erro ao carregar capítulo:", err);
+        setError(err.message);
         setVerses([
           "Ocorreu um erro ao carregar o texto sagrado.",
-          "Verifique se os dados estão corretamente implantados no servidor Vercel."
+          `Erro: ${err.message}`
         ]);
       } finally {
         setIsLoadingContent(false);
@@ -140,6 +144,11 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
         <div className="py-24 flex flex-col items-center justify-center gap-6 opacity-30">
           <div className="w-12 h-12 border-4 border-amber-900 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-[10px] font-black uppercase tracking-widest">Carregando manuscrito...</p>
+        </div>
+      ) : error ? (
+        <div className="py-24 text-center">
+           <p className="text-red-500 font-bold mb-4">{error}</p>
+           <p className="text-sm opacity-60">Certifique-se que a pasta 'data' foi enviada e está acessível em /data/...</p>
         </div>
       ) : (
         <div className="serif-text text-xl md:text-2xl leading-[1.8] text-justify space-y-10 selection:bg-amber-200 selection:text-amber-900">
