@@ -29,32 +29,30 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
 
       try {
         const testamentPath = book.testament === 'Old' ? 'old-testament' : 'new-testament';
-        // Usamos o caminho relativo que funcionará tanto local quanto no Vercel
-        // Certifique-se que a pasta 'data' está em 'public/data' no Vercel
         const url = `/data/${testamentPath}/${bookId}/${chapter}.json`;
         const response = await fetch(url);
         
         if (!response.ok) {
-          throw new Error(`Arquivo não encontrado em: ${url}`);
+          throw new Error(`Chapter file not found: ${url}`);
         }
         
         const data = await response.json();
         const content = Array.isArray(data) ? data : (data.verses || []);
         
         if (content.length === 0) {
-          setVerses(["Este capítulo parece estar vazio no arquivo JSON."]);
+          setVerses(["Este capítulo não possui conteúdo disponível."]);
         } else {
           setVerses(content);
         }
       } catch (error) {
-        console.error("Erro ao carregar capítulo:", error);
+        console.error("Error loading chapter:", error);
         setVerses([
-          "Não foi possível carregar o conteúdo.",
-          "Certifique-se que a pasta 'data' está localizada dentro da pasta 'public' do seu projeto antes de enviar ao Vercel.",
-          `Tentamos buscar em: /data/${book.testament === 'Old' ? 'old-testament' : 'new-testament'}/${bookId}/${chapter}.json`
+          "Ocorreu um erro ao carregar o texto sagrado.",
+          "Verifique se os dados estão corretamente implantados no servidor Vercel."
         ]);
       } finally {
         setIsLoadingContent(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     };
 
@@ -96,118 +94,108 @@ const BibleReader: React.FC<BibleReaderProps> = ({ bookId, chapter, theme, onCha
     setIsLoadingAi(true);
     try {
       const result = await getBibleExplanation(book.name, chapter, verses.join(' '));
-      setExplanation(result || "Insight não disponível.");
+      setExplanation(result || "Não foi possível gerar um insight no momento.");
     } catch (error) {
-      setExplanation("Erro na conexão com o assistente.");
+      setExplanation("Erro na conexão com o assistente teológico.");
     } finally {
       setIsLoadingAi(false);
     }
   };
 
-  const themeClasses = {
-    light: 'bg-stone-50 text-stone-800',
-    dark: 'bg-stone-900 text-stone-200',
-    sepia: 'theme-sepia'
-  };
-
   return (
-    <div className={`p-4 md:p-8 rounded-3xl transition-colors duration-500 ${themeClasses[theme]} min-h-screen animate-fade-in`}>
-      <div className="max-w-3xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 border-b border-stone-200/50 dark:border-stone-700/50 pb-8">
-          <div>
-            <h2 className="text-5xl font-black tracking-tighter text-amber-900 dark:text-amber-500 mb-2">
-              {book?.name} <span className="font-light opacity-50">{chapter}</span>
-            </h2>
-            <div className="flex gap-4">
-              <button 
-                disabled={isLoadingContent || verses.length <= 3}
-                onClick={handleListen}
-                className={`flex items-center gap-2 text-xs font-bold uppercase tracking-widest transition-all ${isPlaying ? 'text-red-600' : 'text-stone-400 hover:text-amber-800 disabled:opacity-20'}`}
-              >
-                {isPlaying ? (
-                  <><div className="w-2 h-2 bg-red-600 rounded-full animate-pulse"></div> Parar Áudio</>
-                ) : (
-                  <><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" /></svg> Ouvir Capítulo</>
-                )}
-              </button>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-3 bg-white/10 p-1 rounded-2xl backdrop-blur-sm">
-            <button 
-              disabled={chapter <= 1 || isLoadingContent}
-              onClick={() => onChapterChange(chapter - 1)}
-              className="p-3 rounded-xl hover:bg-stone-200/50 dark:hover:bg-stone-800 transition-all disabled:opacity-20"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-            </button>
-            <span className="text-sm font-bold w-12 text-center">{chapter}</span>
-            <button 
-              disabled={chapter >= (book?.chaptersCount || 1) || isLoadingContent}
-              onClick={() => onChapterChange(chapter + 1)}
-              className="p-3 rounded-xl hover:bg-stone-200/50 dark:hover:bg-stone-800 transition-all disabled:opacity-20"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </button>
-          </div>
+    <div className="animate-fade-in pb-32">
+      <div className="mb-12">
+        <div className="flex items-baseline gap-4 mb-8">
+          <h2 className="text-6xl font-black tracking-tighter text-amber-900/20 dark:text-amber-500/20 select-none">
+            {chapter}
+          </h2>
+          <h3 className="text-3xl font-black tracking-tighter text-amber-900 dark:text-amber-500">
+            {book?.name}
+          </h3>
         </div>
 
-        {isLoadingContent ? (
-          <div className="flex flex-col items-center justify-center py-40 space-y-4 opacity-50">
-            <div className="animate-spin h-10 w-10 border-4 border-amber-900 border-t-transparent rounded-full"></div>
-            <p className="font-black uppercase tracking-widest text-xs text-amber-900">Abrindo pergaminhos...</p>
-          </div>
-        ) : (
-          <article className="serif-text text-2xl leading-[1.7] space-y-8 mb-20 text-justify animate-fade-in">
-            {verses.map((text, index) => (
-              <p key={index} className="relative group transition-opacity hover:opacity-100 opacity-90">
-                <span className="absolute -left-10 text-[10px] text-stone-400 font-sans font-bold select-none top-4">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                {text}
-              </p>
-            ))}
-          </article>
-        )}
+        <div className="flex flex-wrap gap-3">
+          <button 
+            disabled={isLoadingContent}
+            onClick={handleListen}
+            className={`
+              flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all
+              ${isPlaying ? 'bg-red-600 text-white animate-pulse' : 'bg-stone-500/10 text-stone-600 dark:text-stone-300 hover:bg-stone-500/20'}
+            `}
+          >
+            {isPlaying ? 'Parar Leitura' : 'Ouvir Capítulo'}
+          </button>
+          
+          <button 
+            disabled={isLoadingContent || isLoadingAi}
+            onClick={handleStudyWithAi}
+            className="flex items-center gap-2 px-6 py-3 rounded-full bg-amber-900 text-white text-xs font-black uppercase tracking-widest hover:bg-amber-800 transition-all shadow-lg shadow-amber-900/20"
+          >
+            {isLoadingAi ? 'Consultando...' : 'Pedir Insight'}
+          </button>
+        </div>
+      </div>
 
-        {!isLoadingContent && (
-          <div className="pt-12 border-t border-stone-200 dark:border-stone-800">
-            {!explanation ? (
-              <button 
-                onClick={handleStudyWithAi}
-                disabled={isLoadingAi || verses.length <= 3}
-                className="group flex items-center gap-4 bg-amber-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-amber-800 transition-all transform hover:-translate-y-1 shadow-xl shadow-amber-900/20 disabled:opacity-50"
-              >
-                {isLoadingAi ? (
-                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
-                ) : (
-                  <svg className="w-6 h-6 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-                )}
-                {isLoadingAi ? 'Analisando...' : 'Pedir Insight Teológico'}
-              </button>
-            ) : (
-              <div className="bg-amber-50/50 dark:bg-amber-950/20 rounded-3xl p-8 border border-amber-100 dark:border-amber-900/30 animate-fade-in">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-amber-900 rounded-2xl flex items-center justify-center text-amber-200 shadow-lg">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-                    </div>
-                    <div>
-                      <h3 className="font-black text-amber-900 dark:text-amber-200 uppercase tracking-widest text-xs">Insight da IA</h3>
-                      <p className="text-amber-800/60 dark:text-amber-400/60 text-[10px]">Contextualização baseada em Peterson</p>
-                    </div>
-                  </div>
-                  <button onClick={() => setExplanation(null)} className="text-stone-400 hover:text-stone-600">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                </div>
-                <p className="text-lg leading-relaxed text-stone-700 dark:text-stone-300 whitespace-pre-wrap font-medium italic">
-                  {explanation}
-                </p>
-              </div>
-            )}
+      {isLoadingContent ? (
+        <div className="py-24 flex flex-col items-center justify-center gap-6 opacity-30">
+          <div className="w-12 h-12 border-4 border-amber-900 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-[10px] font-black uppercase tracking-widest">Carregando manuscrito...</p>
+        </div>
+      ) : (
+        <div className="serif-text text-xl md:text-2xl leading-[1.8] text-justify space-y-10 selection:bg-amber-200 selection:text-amber-900">
+          {verses.map((v, i) => (
+            <p key={i} className="relative group hover:opacity-100 opacity-90 transition-opacity">
+              <span className="absolute -left-8 md:-left-12 top-2 text-[10px] font-sans font-black opacity-30 group-hover:opacity-100 transition-opacity select-none">
+                {i + 1}
+              </span>
+              {v}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {explanation && (
+        <div className="mt-20 p-8 md:p-12 bg-amber-900 text-amber-50 rounded-[2.5rem] shadow-2xl animate-fade-in relative">
+          <button 
+            onClick={() => setExplanation(null)}
+            className="absolute top-6 right-6 p-2 hover:bg-white/10 rounded-full transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-1.5 h-10 bg-amber-400 rounded-full"></div>
+            <div>
+              <h4 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Insight Teológico</h4>
+              <p className="text-lg font-bold">Luz sobre a passagem</p>
+            </div>
           </div>
-        )}
+          <p className="text-lg leading-relaxed opacity-90 italic">
+            {explanation}
+          </p>
+        </div>
+      )}
+
+      {/* Persistent Navigation Controls */}
+      <div className="fixed bottom-10 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:right-12 z-40">
+        <div className={`flex items-center gap-1 p-1.5 rounded-full border shadow-2xl backdrop-blur-xl ${theme === 'dark' ? 'bg-stone-800 border-stone-700' : theme === 'sepia' ? 'bg-[#fcf8ef] border-[#e8dfc8]' : 'bg-white border-stone-200'}`}>
+          <button 
+            disabled={chapter <= 1 || isLoadingContent}
+            onClick={() => onChapterChange(chapter - 1)}
+            className="p-4 rounded-full hover:bg-stone-500/10 transition-all disabled:opacity-10"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <div className="px-4 text-sm font-black opacity-40">
+            {chapter} / {book?.chaptersCount}
+          </div>
+          <button 
+            disabled={chapter >= (book?.chaptersCount || 1) || isLoadingContent}
+            onClick={() => onChapterChange(chapter + 1)}
+            className="p-4 rounded-full hover:bg-stone-500/10 transition-all disabled:opacity-10"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
       </div>
     </div>
   );
