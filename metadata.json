@@ -1,0 +1,8 @@
+
+{
+  "name": "A Mensagem - Digital",
+  "description": "Recriação premium da Bíblia A Mensagem com áudio e estudo assistido por IA.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
