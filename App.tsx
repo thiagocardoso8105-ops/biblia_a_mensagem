@@ -21,7 +21,8 @@ const App: React.FC = () => {
         const res = await generateDailyDevotional();
         setDailyDevotional(res || null);
       } catch (e) {
-        console.error("Erro ao carregar devocional diário.");
+        console.warn("Devocional temporariamente indisponível.");
+        setDailyDevotional("Bem-vindo à Bíblia A Mensagem. Escolha um livro para começar sua leitura.");
       } finally {
         setIsLoadingDevotional(false);
       }
@@ -83,7 +84,7 @@ const App: React.FC = () => {
                </div>
               <div className="flex items-center gap-3 mb-10">
                 <div className="w-1.5 h-12 bg-amber-900 rounded-full"></div>
-                <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-900/40">Inpiração Matinal</h4>
+                <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-900/40">Inspiração Matinal</h4>
               </div>
               <div className="serif-text text-2xl md:text-3xl italic leading-relaxed text-stone-800 dark:text-stone-100">
                 {dailyDevotional}
@@ -111,7 +112,6 @@ const App: React.FC = () => {
         onClose={() => setIsSearchOpen(false)} 
       />
 
-      {/* Floating Action for Search */}
       <button 
         onClick={() => setIsSearchOpen(true)}
         className="fixed bottom-10 right-10 md:hidden w-14 h-14 bg-amber-900 text-white rounded-2xl flex items-center justify-center shadow-2xl z-50 transition-transform active:scale-90"
